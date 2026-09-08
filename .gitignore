@@ -1,0 +1,58 @@
+# ==========================================
+# Obsidian 核心工作区配置（强烈建议忽略）
+# ==========================================
+# workspace.json 记录当前打开的文件、分屏布局、光标位置等
+# 每次在 Obsidian 里切换笔记都会变动，不同步可避免大量无意义的提交和冲突
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+
+# Obsidian 内部索引缓存与回收站
+.obsidian/cache/
+.obsidian/.trash/
+
+# ==========================================
+# 安全与敏感信息（防止 API Key 泄露到 GitHub）
+# ==========================================
+# Copilot 等 AI 插件的 data.json 可能会保存 OpenAI/Claude/DeepSeek 等 API Key
+# 如果你的仓库是公开的（Public），泄露 API Key 会导致账号被封或产生账单
+.obsidian/plugins/copilot/data.json
+# 如果后续安装了其他可能存放 API Key 或私密 Token 的插件，也可以如下忽略：
+# .obsidian/plugins/**/data.json
+
+# ==========================================
+# AI 工具本地缓存与依赖（库内专属）
+# ==========================================
+# Copilot 插件的模型列表大缓存（约 4.5MB）
+.copilot/
+
+# opencode / node 依赖包
+.opencode/node_modules/
+node_modules/
+
+# ==========================================
+# 操作系统与临时文件
+# ==========================================
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# 临时文件与日志
+*.tmp
+*.temp
+*.log
+*.bak
+*.swp
+*~
