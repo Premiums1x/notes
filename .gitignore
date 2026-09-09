@@ -23,8 +23,9 @@
 # AI 工具本地缓存与依赖（库内专属）
 # ==========================================
 # Copilot 插件的模型列表大缓存（约 4.5MB）
+copilot/
 .copilot/
-
+.opencode/
 # opencode / node 依赖包
 .opencode/node_modules/
 node_modules/
