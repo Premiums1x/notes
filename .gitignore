@@ -29,6 +29,8 @@ copilot/
 # opencode / node 依赖包
 .opencode/node_modules/
 node_modules/
+.claude/
+.agents/
 
 # ==========================================
 # 操作系统与临时文件
