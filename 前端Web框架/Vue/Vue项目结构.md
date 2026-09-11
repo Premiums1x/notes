@@ -33,3 +33,51 @@ app.mount('#app')
 
 补充：也可以**作为webpack的entry指向的文件**
 - Webpack 的 `entry` 指向这个 `main.js`，从它开始把 `App.vue`、路由、组件、样式、图片等一路追踪打包。
+
+---
+
+## Vue 原理复习（博客笔记）
+
+> 来源：http://120.77.152.123:8088/posts/vue%e5%a4%8d%e4%b9%a0 ｜ 原发布日期：2026-09-02
+
+main.js是入口，创建、管理Vue实例，Vue是在内存中提供JS逻辑实时管理、更新DOM
+
+浏览器 -> Vite服务器 -> 返回index.html -> 发现\<div #app>是空的，继续向下找到\<script src="./main.js">，就找到js执行逻辑创建Vue实例 -> 注册根组件 -> Vue 根据 template / 状态维护 DOM
+
+HTML文本语言描述结构 到 浏览器 HTML parse 到 内存中创建维护的DOM对象树 到 Vue来维护、动态实时更新DOM对象
+
+HTML静态写死 / DOM实时更新（Vue的原理） + CSS = 渲染 UI
+
+Router:
+
+```
+createRouter()创建路由实例
+app.use()，在Vue应用中使用
+
+需要router-view路由出口：即根据当前什么路由展示什么组件，
+匹配规则定义：routes.js
+[
+  {
+    path:"",
+    component:xxx
+
+   }
+]
+```
+
+Pinia：
+
+```
+defineStore
+↓
+state
+↓
+多个组件拿到同一个 Store
+↓
+一个组件修改
+↓
+其他组件响应式更新
+
+以及：
+state / getters / **actions**
+```
