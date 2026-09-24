@@ -2088,6 +2088,312 @@ DOM/CSS → Elements
 
 ---
 
+
+# 71. Debug 实战复盘：页面一直 Loading，但 Network 根本没有请求
+
+这是一次实习项目里很“哭笑不得”，但也很值得记住的 Debug 经历。
+
+## 71.1 项目里的接口封装方式
+
+项目中不会在 Vue 组件里直接写 axios，而是先对 axios 做统一封装。
+
+大致调用链是：
+
+~~~text
+Vue 组件
+↓
+导入 api 目录下暴露的方法
+↓
+api/对应业务模块.js
+↓
+request(...)
+↓
+axios
+↓
+请求拦截器 / 响应拦截器
+↓
+HTTP 请求
+~~~
+
+例如供应商接口：
+
+~~~js
+import request from "@/utils/request"
+
+// 获取全部供应商
+export function getSupplierList(data) {
+  return request({
+    url: '/v1/supplier/list',
+    method: 'post',
+    data
+  })
+}
+~~~
+
+其中 **request** 是项目底层基于 axios 封装的请求方法，统一处理请求、响应拦截等逻辑。
+
+组件中再导入：
+
+~~~js
+import { getSupplierList } from '@/api/supplier'
+~~~
+
+然后在业务方法里组装参数并调用：
+
+~~~js
+const params = {
+  // ...
+}
+
+getSupplierList(params)
+~~~
+
+---
+
+## 71.2 当时的现象
+
+当天下午写一个功能时，流程大概是：
+
+~~~text
+组装请求参数
+↓
+调用 api 方法
+↓
+等待接口结果
+~~~
+
+结果页面一直处于 Loading / 转圈状态。
+
+打开浏览器 DevTools 后发现一个非常关键的现象：
+
+> Network 里根本没有出现对应的接口请求。
+
+当时其实已经隐约意识到：
+
+~~~text
+可能是“调用接口的方法”这里出了问题
+~~~
+
+但脑子还是顺着业务代码往下钻，误以为：
+
+~~~text
+是不是参数组装过程卡住了？
+是不是某段参数处理逻辑有问题？
+~~~
+
+于是排查重点放错了地方。
+
+---
+
+## 71.3 真正的原因
+
+最后发现并不是参数的问题。
+
+真正的问题非常简单：
+
+> api 模块中实际 export 的方法名，和组件中导入 / 调用的方法名没有对应上。
+
+也就是说，请求调用链实际上连 **request(...)** 这一层都没有正常走到。
+
+因此浏览器自然不会产生 HTTP 请求，Network 中也就什么都看不到。
+
+问题实际发生的位置是：
+
+~~~text
+组件业务方法
+↓
+API 方法引用 / 调用   ← 问题在这里
+↓
+request
+↓
+axios
+↓
+HTTP
+~~~
+
+而我当时却在重点检查：
+
+~~~text
+请求参数
+~~~
+
+相当于还没真正“发车”，就在研究车里装的货有没有问题。
+
+---
+
+## 71.4 这次 Debug 最大的教训
+
+以后看到：
+
+~~~text
+页面一直 Loading
++
+Network 没有任何对应请求
+~~~
+
+第一反应不应该是：
+
+~~~text
+后端是不是挂了？
+接口参数是不是错了？
+request 拦截器是不是有问题？
+~~~
+
+因为如果 Network 中连请求都没有，说明问题很可能发生在 HTTP 请求产生之前。
+
+应该优先排查：
+
+~~~text
+① 点击事件 / 生命周期有没有真正触发？
+↓
+② 业务方法有没有执行？
+↓
+③ 参数组装代码有没有执行完成？
+↓
+④ API 方法是否正确 import？
+↓
+⑤ import 的方法名和 export 的方法名是否一致？
+↓
+⑥ 调用的是否真的是预期 API 方法？
+↓
+⑦ 代码是否执行到了 request(...)？
+↓
+⑧ 最后才进入 axios / 拦截器 / HTTP 请求
+~~~
+
+核心判断是：
+
+> **Network 没请求，就先查“为什么代码没有走到发请求这一步”，而不是先查请求发出去之后会发生什么。**
+
+---
+
+## 71.5 一个更成熟的排查方法
+
+以后遇到类似代码：
+
+~~~js
+async function submit() {
+  const params = buildParams()
+
+  await getSupplierList(params)
+}
+~~~
+
+页面卡住，同时 Network 没请求，可以快速加几个断点或日志：
+
+~~~js
+async function submit() {
+  console.log('1. submit 已进入')
+
+  const params = buildParams()
+  console.log('2. 参数组装完成', params)
+
+  console.log('3. 准备调用 API', getSupplierList)
+
+  const res = await getSupplierList(params)
+
+  console.log('4. API 返回', res)
+}
+~~~
+
+或者直接使用 Sources 打断点。
+
+如果只看到：
+
+~~~text
+1
+2
+~~~
+
+却没有继续执行，就说明问题范围已经被压缩到了 API 调用附近。
+
+如果 Network 还是没有请求，就继续向调用链下钻：
+
+~~~text
+组件
+↓
+api 方法
+↓
+request
+↓
+axios
+~~~
+
+而不是直接跳到：
+
+~~~text
+Payload
+Response
+后端接口
+数据库
+~~~
+
+---
+
+## 71.6 这次经历补充了一个很重要的分层思想
+
+以前容易把：
+
+~~~text
+“接口有问题”
+~~~
+
+理解成一个整体。
+
+实际上至少可以拆成：
+
+~~~text
+调用业务方法
+↓
+调用 API 方法
+↓
+进入 request 封装
+↓
+axios 创建请求
+↓
+请求拦截器
+↓
+浏览器发 HTTP
+↓
+后端收到请求
+↓
+后端返回
+↓
+响应拦截器
+↓
+组件拿到结果
+~~~
+
+而 Network 只会从：
+
+~~~text
+浏览器真正开始进行网络通信
+~~~
+
+之后给你证据。
+
+所以：
+
+~~~text
+Network 有请求
+→ 可以继续查 URL / Method / Payload / Response / 后端
+
+Network 没请求
+→ 应该向前查 JS 调用链
+~~~
+
+这两个排查方向要明确区分。
+
+---
+
+## 71.7 给自己记一句
+
+> **没有请求，就不要先调“请求内容”；先确认请求代码到底有没有被执行。**
+
+这次问题虽然只是一个 API 方法名没有对上，但它提醒我：Debug 最容易浪费时间的地方，往往不是不知道某个技术，而是已经看到了关键证据，却没有顺着证据及时调整排查方向。
+
+---
+
 # 总结
 
 对于前端开发来说，DevTools 最核心的价值可以总结成一句话：
